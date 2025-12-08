@@ -1,0 +1,53 @@
+# Python cache
+__pycache__/
+*.py[cod]
+
+# System
+.DS_Store
+Thumbs.db
+
+# Virtual env
+env/
+venv/
+.venv/
+
+# Editor configs
+.vscode/
+.idea/
+
+# Logs and temporary outputs
+logs/
+outputs/
+output/
+runs/
+temp/
+cache/
+
+# ML model & large files
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.safetensors
+*.mp4
+*.avi
+*.h5
+
+# Data directories
+data/
+datasets/
+
+# Project-specific ignore
+modules/ImageCaptioning/input/
+
+modules/NBGenerator/input/
+modules/NBGenerator/output/
+
+modules/PoseExtractor/inputs/
+modules/PoseExtractor/outputs/
+modules/PoseExtractor/outputs_test/
+modules/PoseExtractor/test_Inputs/
+
+modules/qwen/ComfyUI/
+modules/qwen/output/
+modules/qwen/prompt

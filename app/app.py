@@ -2,6 +2,7 @@ import streamlit as st
 import subprocess
 import time
 import os
+import io
 from PIL import Image
 
 st.set_page_config(layout="wide")
@@ -92,13 +93,13 @@ elif st.session_state["page"] == "running":
     st.title("처리 중…")
     st.write("모델이 실행되는 동안 잠시만 기다려주세요.")
 
-    with st.spinner("포즈 변환 중입니다...\n롤 한 판 하고 오세요.\n알림은 안 드립니다."):
+    with st.spinner("포즈 변환 중입니다...\n롤 한 판 하고 오세요."):
         process = subprocess.run(
             ["bash", "pose_to_qwen.sh"],
             capture_output=True,
             text=True
         )
-        #time.sleep(15)
+        #time.sleep(12)
 
         go_to("result")
 
@@ -145,6 +146,15 @@ elif st.session_state["page"] == "result":
     # 오른쪽: 할루시네이션 옵션 UI
     # -------------------------
     with col_opts:
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        byte_img = buf.getvalue()
+        download=st.download_button(
+            label="Download",
+            data=byte_img,
+            file_name="qwen_output.png",
+            mime="image/png"
+        )
         expander = st.expander(
             "1차로 생성한 이미지에서\n\n어떠한 점이 마음에 안 드시나요?"
         )
@@ -191,6 +201,7 @@ elif st.session_state["page"] == "running2":
             capture_output=True,
             text=True
         )
+        #time.sleep(8)
 
         # 실행 완료 → 결과 페이지로 이동
         go_to("result2")
@@ -201,20 +212,11 @@ elif st.session_state["page"] == "result2":
     _, col_main, _ = st.columns([1, 6, 1])
     with col_main:
         # 2-컬럼 프레임 구성
-        col_qwen, _, col_nb = st.columns([10, 2, 10])
-        with col_qwen:
-            st.markdown("## Qwen Result")
-            st.markdown("---")
-            _, col_img, _ = st.columns([1, 3, 1])
-            with col_img:
-                qwen = st.session_state.get("qwen_output", None)
-
-                st.image(qwen, caption="", width="content")
-
+        st.markdown("## Nano Banana Result")
+        st.markdown("---")
+        col_nb, col_bt = st.columns([8, 1])
         with col_nb:
-            st.markdown("## Nano Banana Result")
-            st.markdown("---")
-            _, col_img, _ = st.columns([1, 3, 1])
+            _, col_img, _ = st.columns([1, 2, 1])
             with col_img:
                 if not os.path.exists(OUTPUT_DIR):
                     st.error(f"폴더가 없습니다: {os.path.abspath(OUTPUT_DIR)}")
@@ -231,3 +233,13 @@ elif st.session_state["page"] == "result2":
                         nb = Image.open(latest_img_path)
 
                         st.image(nb, caption="", width="content")
+        with col_bt:
+            buf = io.BytesIO()
+            nb.save(buf, format="PNG")
+            byte_img = buf.getvalue()
+            download=st.download_button(
+                label="Download",
+                data=byte_img,
+                file_name="output.png",
+                mime="image/png"
+            )
