@@ -8,58 +8,80 @@ st.set_page_config(layout="wide")
 
 hallucination_type = None
 
-# -----------------------
-# 초기 페이지 상태 설정
-# -----------------------
+st.markdown(
+    """
+    <style>
+    div.stButton > button {
+        background-color: #7C98B3;
+        color: white;
+        border-radius: 8px;
+        height: 48px;
+        width: 100%;
+        border: none;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    div.stButton > button:hover {
+        background-color: #7C98B3;
+        border: 2px solid #81F495;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 if "page" not in st.session_state:
     st.session_state["page"] = "upload"
 
-
-# -----------------------
-# 페이지 이동 함수
-# -----------------------
 def go_to(page_name):
     st.session_state["page"] = page_name
     st.rerun()
 
-
-# ============================================================
-# 1. 업로드 페이지
-# ============================================================
+# Upload
 if st.session_state["page"] == "upload":
-    st.title("이미지 업로드")
+    _, col_main, _ = st.columns([1, 6, 1])
+    with col_main:
+        st.title("POZibilty")
 
-    col_src, col_pose = st.columns(2, gap="large")
+        space, run_col = st.columns([6,1])
+        st.markdown("---")
+        run = run_col.button("RUN", use_container_width=True)
 
-    with col_src:
-        src_img = st.file_uploader("당신의 사진 업로드", type=["png","jpg","jpeg"], key="src_img")
-        if src_img is not None:
-            st.image(src_img, caption="Src_img 미리보기", width=400)
+        col_src, _, col_pose = st.columns([10, 2, 10])
 
-    with col_pose:
-        pose_img = st.file_uploader("포즈 사진 업로드", type=["png","jpg","jpeg"], key="pose_ref")
-        if pose_img is not None:
-            st.image(pose_img, caption="Pose_ref 미리보기", width=400)
+        with col_src:
+            st.markdown("## Your Picture")
+            src_img = st.file_uploader("", type=["png","jpg","jpeg"], key="src_img")
+            _, sub_col, _ = st.columns([1, 2, 1])
+            with sub_col:
+                if src_img is not None:
+                    st.image(src_img, caption="", width="content")
 
-    space, run_col = st.columns([6,1])
-    run = run_col.button("RUN", use_container_width=True)
+        with col_pose:
+            st.markdown("## Your Pose")
+            pose_img = st.file_uploader("", type=["png","jpg","jpeg"], key="pose_ref")
+            _, sub_col, _ = st.columns([1, 2, 1])
+            with sub_col:
+                if pose_img is not None:
+                    st.image(pose_img, caption="", width="content")
 
-    if run:
-        if not src_img or not pose_img:
-            st.warning("두 이미지를 모두 업로드해주세요.")
-        else:
-            # 이미지 저장
-            save_dir = "../data/input"
-            os.makedirs(save_dir, exist_ok=True)
+        if run:
+            if not src_img or not pose_img:
+                st.warning("두 이미지를 모두 업로드해주세요.")
+            else:
+                # 이미지 저장
+                save_dir = "../data/input"
+                os.makedirs(save_dir, exist_ok=True)
 
-            with open(os.path.join(save_dir, "pose_ref.png"), "wb") as f:
-                f.write(pose_img.getvalue())
+                with open(os.path.join(save_dir, "pose_ref.png"), "wb") as f:
+                    f.write(pose_img.getvalue())
 
-            with open(os.path.join(save_dir, "src_img.png"), "wb") as f:
-                f.write(src_img.getvalue())
+                with open(os.path.join(save_dir, "src_img.png"), "wb") as f:
+                    f.write(src_img.getvalue())
 
-            # bash 실행 페이지로 이동
-            go_to("running")
+                # bash 실행 페이지로 이동
+                go_to("running")
 
 
 # ============================================================
@@ -70,16 +92,14 @@ elif st.session_state["page"] == "running":
     st.title("처리 중…")
     st.write("모델이 실행되는 동안 잠시만 기다려주세요.")
 
-    # 로딩 애니메이션
     with st.spinner("포즈 변환 중입니다...\n롤 한 판 하고 오세요.\n알림은 안 드립니다."):
-        # 실제 bash 실행
         process = subprocess.run(
             ["bash", "pose_to_qwen.sh"],
             capture_output=True,
             text=True
         )
+        #time.sleep(15)
 
-        # 실행 완료 → 결과 페이지로 이동
         go_to("result")
 
 
@@ -90,51 +110,58 @@ elif st.session_state["page"] == "result":
 
     OUTPUT_DIR = "../data/qwen_outputs"
 
-    st.title("Qwen 결과 이미지")
+    _, col_main, _ = st.columns([1, 6, 1])
+    with col_main:
+        st.markdown("# Result")
+        st.markdown("---")
 
-    # 2-컬럼 프레임 구성
-    col_img, col_opts = st.columns([3, 1])  # 왼쪽: 넓게, 오른쪽: 옵션
+        # 2-컬럼 프레임 구성
+        col_img, col_opts = st.columns([3, 1.2])  # 왼쪽: 넓게, 오른쪽: 옵션
 
-    # -------------------------
-    # 왼쪽: 이미지 표시
-    # -------------------------
-    with col_img:
-        if not os.path.exists(OUTPUT_DIR):
-            st.error(f"폴더가 없습니다: {os.path.abspath(OUTPUT_DIR)}")
-        else:
-            exts = (".png", ".jpg", ".jpeg", ".webp")
-            files = [f for f in os.listdir(OUTPUT_DIR) if f.lower().endswith(exts)]
-            files.sort()
+        # -------------------------
+        # 왼쪽: 이미지 표시
+        # -------------------------
+        with col_img:
+            _, sub_col, _ = st.columns([1,2,1])
+            with sub_col:
+                if not os.path.exists(OUTPUT_DIR):
+                    st.error(f"폴더가 없습니다: {os.path.abspath(OUTPUT_DIR)}")
+                else:
+                    exts = (".png", ".jpg", ".jpeg", ".webp")
+                    files = [f for f in os.listdir(OUTPUT_DIR) if f.lower().endswith(exts)]
+                    files.sort()
 
-            if len(files) == 0:
-                st.warning("이미지가 없습니다.")
-            else:
-                # 최신 이미지 1장만 표시 (원하면 전체 그리드로 변경 가능)
-                latest_img_path = os.path.join(OUTPUT_DIR, files[-1])
-                img = Image.open(latest_img_path)
+                    if len(files) == 0:
+                        st.warning("이미지가 없습니다.")
+                    else:
+                        latest_img_path = os.path.join(OUTPUT_DIR, files[-1])
+                        img = Image.open(latest_img_path)
+                        st.session_state.qwen_output = img
 
-                st.image(img, caption=files[-1], width=700)
+                        st.image(img, caption="", width="content")
 
 
     # -------------------------
     # 오른쪽: 할루시네이션 옵션 UI
     # -------------------------
     with col_opts:
-        st.subheader("할루시네이션 유형 선택")
+        expander = st.expander(
+            "1차로 생성한 이미지에서\n\n어떠한 점이 마음에 안 드시나요?"
+        )
 
         hallucination_types = {
-                1: "simply returned original image",
-                2: "pose",
-                3: "facial identity",
-                4: "outfit",
-                5: "proportion",
-                6: "background",
-                7: "person",
-                8: "perspective or depth",
-                9: "object",
+                1: "원본 이미지를 그대로 리턴했어요",
+                2: "포즈가 반영이 안됐어요",
+                3: "얼굴이 변형됐어요",
+                4: "의상이 바뀌었어요",
+                5: "비율이 변형됐어요",
+                6: "배경이 바뀌었어요",
+                7: "완전히 다른 사람이 생성됐어요",
+                8: "원근 또는 구도가 변형됐어요",
+                9: "전혀 상관없는 물건이 생성됐어요",
         }
 
-        choice_label = st.radio(
+        choice_label = expander.radio(
             "할루시네이션 유형",
             list(hallucination_types.values()),
             horizontal=False
@@ -143,8 +170,8 @@ elif st.session_state["page"] == "result":
             if v == choice_label:
                 st.session_state.selected_hallu = k
                 break
-    space, run_col = st.columns([6,1])
-    run = run_col.button("FIX", use_container_width=True)
+        space, run_col = expander.columns([2,1])
+        run = run_col.button("FIX", use_container_width=True)
 
     if run:
         go_to("running2")
@@ -171,28 +198,36 @@ elif st.session_state["page"] == "running2":
 elif st.session_state["page"] == "result2":
 
     OUTPUT_DIR = "../data/outputs"
+    _, col_main, _ = st.columns([1, 6, 1])
+    with col_main:
+        # 2-컬럼 프레임 구성
+        col_qwen, _, col_nb = st.columns([10, 2, 10])
+        with col_qwen:
+            st.markdown("## Qwen Result")
+            st.markdown("---")
+            _, col_img, _ = st.columns([1, 3, 1])
+            with col_img:
+                qwen = st.session_state.get("qwen_output", None)
 
-    st.title("Nano Banana 결과 이미지")
+                st.image(qwen, caption="", width="content")
 
-    # 2-컬럼 프레임 구성
-    col_img, col_opts = st.columns([3, 1])  # 왼쪽: 넓게, 오른쪽: 옵션
+        with col_nb:
+            st.markdown("## Nano Banana Result")
+            st.markdown("---")
+            _, col_img, _ = st.columns([1, 3, 1])
+            with col_img:
+                if not os.path.exists(OUTPUT_DIR):
+                    st.error(f"폴더가 없습니다: {os.path.abspath(OUTPUT_DIR)}")
+                else:
+                    exts = (".png", ".jpg", ".jpeg", ".webp")
+                    files = [f for f in os.listdir(OUTPUT_DIR) if f.lower().endswith(exts)]
+                    files.sort()
 
-    # -------------------------
-    # 왼쪽: 이미지 표시
-    # -------------------------
-    with col_img:
-        if not os.path.exists(OUTPUT_DIR):
-            st.error(f"폴더가 없습니다: {os.path.abspath(OUTPUT_DIR)}")
-        else:
-            exts = (".png", ".jpg", ".jpeg", ".webp")
-            files = [f for f in os.listdir(OUTPUT_DIR) if f.lower().endswith(exts)]
-            files.sort()
+                    if len(files) == 0:
+                        st.warning("이미지가 없습니다.")
+                    else:
+                        # 최신 이미지 1장만 표시 (원하면 전체 그리드로 변경 가능)
+                        latest_img_path = os.path.join(OUTPUT_DIR, files[-1])
+                        nb = Image.open(latest_img_path)
 
-            if len(files) == 0:
-                st.warning("이미지가 없습니다.")
-            else:
-                # 최신 이미지 1장만 표시 (원하면 전체 그리드로 변경 가능)
-                latest_img_path = os.path.join(OUTPUT_DIR, files[-1])
-                img = Image.open(latest_img_path)
-
-                st.image(img, caption=files[-1], width=700)
+                        st.image(nb, caption="", width="content")

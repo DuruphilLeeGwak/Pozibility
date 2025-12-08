@@ -1,6 +1,7 @@
 """
-Pose Transfer API Module (Final v2)
-- Added 'retain_inputs' option to prevent file deletion/movement.
+Pose Transfer API Module (Final v3)
+- Saves trans_bg.jpg (modified source)
+- Uses modified source for overlay rendering
 """
 import sys
 import os
@@ -84,6 +85,7 @@ def execute_pose_transfer(
     if not ref_p.exists():
         raise FileNotFoundError(f"Reference file not found: {ref_p}")
 
+    # 설정 로드
     yaml_config = explicit_config or {}
     if not yaml_config and Path(config_path).exists():
         with open(config_path, 'r', encoding='utf-8') as f:
@@ -94,16 +96,15 @@ def execute_pose_transfer(
     else:
         pipeline_config = PipelineConfig()
 
-    # [수정] 시스템 설정 로드 (retain_inputs 추가)
-    system_cfg = yaml_config.get('system', {})
-    enable_archiving = system_cfg.get('enable_archiving', False)
-    retain_inputs = system_cfg.get('retain_inputs', False) # 기본값 False
-
-    # 출력 옵션 로드
+    # 출력 옵션 확인
     output_cfg = yaml_config.get('output', {})
     do_save_json = output_cfg.get('save_json', True)
     do_save_skel = output_cfg.get('save_skeleton_image', True)
     do_save_debug = output_cfg.get('save_debug_image', False)
+
+    system_cfg = yaml_config.get('system', {})
+    enable_archiving = system_cfg.get('enable_archiving', False)
+    retain_inputs = system_cfg.get('retain_inputs', False)
 
     date_str = datetime.now().strftime("%Y%m%d")
     time_str = datetime.now().strftime("%H%M%S")
@@ -125,28 +126,46 @@ def execute_pose_transfer(
         
         res_paths = {}
         
+        # [NEW] 확장된 배경 이미지 저장 (trans_bg.jpg)
+        path_bg = out_dirs["trans"] / "trans_bg.jpg"
+        # result.modified_source_image가 있으면 저장, 없으면 원본 저장
+        final_bg = result.modified_source_image if result.modified_source_image is not None else load_image(src_p)
+        save_image(final_bg, str(path_bg))
+        res_paths['background'] = str(path_bg)
+
+        # 1. JSON 저장
         if do_save_json:
             path_json = out_dirs["trans"] / "trans_kp.json"
             save_json(result.to_json(), str(path_json))
             res_paths['json'] = str(path_json)
         
+        # 2. Skeleton 저장
         if do_save_skel:
             path_skel = out_dirs["trans"] / "trans_sk.jpg"
             save_image(result.skeleton_image, str(path_skel))
             res_paths['skeleton'] = str(path_skel)
         
+        # 3. Overlay (Debug) 저장
         if do_save_debug:
             path_overlay = out_dirs["trans"] / "trans_rend.jpg"
-            src_img = load_image(src_p)
-            overlay = pipeline.renderer.render(src_img, result.transferred_keypoints, result.transferred_scores)
+            # [중요] 확장된 배경(final_bg) 위에 그려야 좌표가 맞음
+            overlay = pipeline.renderer.render(final_bg, result.transferred_keypoints, result.transferred_scores)
             save_image(overlay, str(path_overlay))
             res_paths['overlay'] = str(path_overlay)
         
+        # 디버그 Bbox 이미지 저장
+        if result.src_debug_image is not None:
+            path_debug_src = out_dirs["src"] / "src_debug_bbox.jpg"
+            save_image(result.src_debug_image, str(path_debug_src))
+            
+        if result.ref_debug_image is not None:
+            path_debug_ref = out_dirs["ref"] / "ref_debug_bbox.jpg"
+            save_image(result.ref_debug_image, str(path_debug_ref))
+
         res_paths['job_dir'] = str(out_dirs['root'])
         
         print(f"✅ Finished Job")
         
-        # [수정] 파일 정리 함수 호출 (retain_inputs 전달)
         _cleanup_inputs(src_p, ref_p, enable_archiving, retain_inputs)
         
         return res_paths
@@ -183,14 +202,10 @@ def _save_analysis(pipeline, image_path: Path, output_dir: Path, prefix: str, sa
         save_image(overlay_img, str(output_dir / f"{prefix}_rend.jpg"))
 
 def _cleanup_inputs(src_path: Path, ref_path: Path, enable_archiving: bool, retain_inputs: bool, archive_root: str = "archive"):
-    """입력 파일 정리 로직 (수정됨)"""
-    
-    # 1. 파일 유지 모드 (가장 강력함)
     if retain_inputs:
         print("🛡️  Inputs retained (System setting: retain_inputs=True)")
         return
 
-    # 2. 아카이빙 모드 (이동)
     if enable_archiving:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         archive_dir = Path(archive_root)
@@ -203,8 +218,6 @@ def _cleanup_inputs(src_path: Path, ref_path: Path, enable_archiving: bool, reta
         shutil.move(str(src_path), str(dest_src))
         shutil.move(str(ref_path), str(dest_ref))
         print(f"📦 Archived inputs to {archive_dir}")
-        
-    # 3. 휘발 모드 (삭제)
     else:
         try:
             if src_path.exists(): os.remove(str(src_path))
