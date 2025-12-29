@@ -1,0 +1,167 @@
+# POZIBILITY : Unlock your pose, unlock your possibility
+
+![POZIBILITY 커버](assets/00_cover.png)
+
+**AI 포즈 합성 서비스 POZIBILITY**는 *정적인 사진 경험을 더 동적이고 자신감 있는 경험으로 확장*하기 위해,
+사용자의 원본 사진에 다른 사람의 역동적인 포즈를 자연스럽게 합성하는 2-Stage 이미지 생성 파이프라인을 제안합니다.
+
+- 기간: 2025.12.08  
+- 팀원: 곽주영, 고현석, 황인욱  
+- 멘토: 이호진, 한서우  
+
+---
+
+## 목차
+1. [프로젝트 소개](#프로젝트-소개)
+2. [기획 의도](#기획-의도)
+3. [서비스 흐름도](#서비스-흐름도)
+4. [AI 흐름도](#ai-흐름도)
+5. [시연 영상](#시연-영상)
+6. [Problems & Solutions](#problems--solutions)
+7. [최종 결과물](#최종-결과물)
+8. [발전 방향](#발전-방향)
+9. [Appendix: 1-Stage vs 2-Stage](#appendix-1-stage-vs-2-stage)
+
+---
+
+## 프로젝트 소개
+
+![프로젝트 소개](assets/04_project_intro.png)
+
+**목표**
+- 신체 비율 유지 및 자연스러운 합성으로 *사실적인 이미지 생성*
+- “상상만 했던 과감한 포즈”를 실제 사진으로 시뮬레이션
+- 일반 사진을 넘어 이미지 사진, 바디 프로필 등으로 확장 가능
+
+---
+
+## 기획 의도
+
+![기획 의도](assets/06_intent.png)
+
+- **상상과 현실의 괴리**
+- **표현에 대한 갈망 vs 부끄러움**
+- 어색한 나의 포즈를 **다른 사람의 역동적 포즈로 대체**해보면?
+- 결과: *포즈를 변형한 나만의 A컷*
+
+---
+
+## 서비스 흐름도
+
+![서비스 흐름도](assets/08_service_flow.png)
+
+POZIBILITY는 2-Stage 생성 구조를 기반으로 합니다.
+
+1. **원본 및 포즈 이미지 업로드**
+2. **원본에 포즈를 반영한 1차 이미지 생성**
+3. **유저 피드백 입력**
+4. **피드백 기반 이미지 재생성 → 최종 이미지 공유**
+
+---
+
+## AI 흐름도
+
+![AI 흐름도](assets/09_ai_flow.png)
+
+### Stage 1 (1차 생성)
+- **Keypoint Detection (DW-pose)**  
+- **Image Captioning**(원본 이미지 설명 추출) → 프롬프트에 반영  
+- **QWEN-IMAGE-EDIT**로 1차 결과 생성
+
+### Stage 2 (2차 생성)
+- 1차 결과에서 발생한 **할루시네이션 유형**을 유저가 선택
+- 선택된 유형 + Captioning 정보를 프롬프트에 반영
+- **NanoBanana**(이미지 편집/정정 단계)로 최종 결과 생성
+
+---
+
+## 시연 영상
+
+아래 링크에서 시연 영상을 확인할 수 있습니다.
+
+- 시연 영상: https://drive.google.com/file/d/1TprIpIyO2AX0E3BqYp3gUCXVjPXla5s4/view?usp=drive_link
+
+> GitHub에서 미리보기 썸네일이 필요하다면, `assets/00_cover.png` 또는 `assets/26_results_1.png`를 썸네일로 사용해
+> 링크 버튼 형태로 배치할 수 있습니다.
+
+예시:
+```md
+[![시연 영상 보기](assets/26_results_1.png)](https://drive.google.com/file/d/1TprIpIyO2AX0E3BqYp3gUCXVjPXla5s4/view?usp=drive_link)
+```
+
+---
+
+## Problems & Solutions
+
+![Problems & Solutions](assets/13_problems_solutions.png)
+
+### Problem 1) 원본과 포즈 인물 간 비율 불일치  
+✅ **해결**: 이미지 전처리(비율/배치 보정)
+
+![전처리: 원본-포즈 인체 비율 차이](assets/15_preprocess_body_ratio.png)
+
+- 원본 키포인트 간 **길이 정보** + 포즈 키포인트 라인 간 **각도 정보**를 결합해 비율 차이를 줄였습니다.
+- 예시: 성인 원본 + 아기 포즈 / 화각 왜곡 케이스 대응
+
+### Problem 2) 원본 인물/맥락을 고려하지 않은 생성(배경/성별/도구 등 변형)  
+✅ **해결**: Image Captioning으로 원본 정보를 프롬프트에 강제 반영
+
+![Image Captioning 필요성](assets/18_captioning_why.png)
+
+- 배경/성별/도구/의상 등의 정보를 누락하면 모델이 임의로 바꿔 생성하는 문제를 줄이기 위해,
+  원본 및 포즈 이미지의 설명을 프롬프트에 포함했습니다.
+
+### Problem 3) 매번 다른 생성 결과(할루시네이션 유형 이해/제어 어려움)  
+✅ **해결**: UI/UX + 2-Stage Process(유저 피드백 기반 재생성)
+
+![Stage2 필요성](assets/22_stage2_why.png)
+![Stage2 UI](assets/23_stage2_ui.png)
+
+- 1차 생성 결과에서 사용자가 **불만족 유형(할루시네이션 유형)**을 선택
+- 선택된 유형에 맞춰 프롬프트를 구성해 2차 생성에서 오류를 정정
+
+---
+
+## 최종 결과물
+
+아래는 **원본 / 포즈 / 1차(QWEN) / 2차(NanoBanana)** 비교 예시입니다.
+
+![최종 결과물 예시 1](assets/26_results_1.png)
+![최종 결과물 예시 2](assets/27_results_2.png)
+![최종 결과물 예시 3](assets/28_results_3.png)
+
+---
+
+## 발전 방향
+
+![발전 방향](assets/30_future.png)
+
+**Limitations**
+1. **원본 얼굴이 작은 전신샷**에서 얼굴 변형 발생  
+   - 개선: 동일 인물 레퍼런스 사진을 추가로 받아 **Face Swap** 또는 신원 유지 강화
+2. **1차 생성에서 다중 할루시네이션 발생** 시 2차에서 완전 제어 어려움  
+   - 개선: 커스텀 데이터셋 구축 후 **QWEN 파인튜닝**
+3. 키포인트 이미지 배치 시 정렬 난이도 및 구도 완성도 이슈  
+   - 개선: 다양한 사진 조합 테스트 케이스를 축적/분석해 규칙 개선
+
+---
+
+## Appendix: 1-Stage vs 2-Stage
+
+![1-Stage vs 2-Stage 비교](assets/33_1stage_vs_2stage_1.png)
+
+- **1-Stage(나노바나나 only)**: 포즈를 그대로 삽입(단, 원본 맥락/정체성 유지가 흔들릴 수 있음)
+- **2-Stage(QWEN + 나노바나나)**: 1차에서 포즈 전이 기반 초안 생성 후, 2차에서 할루시네이션을 정정
+
+### 실패 케이스(원본 얼굴이 작은 전신샷)
+
+![실패 케이스](assets/36_failure_face_small.png)
+
+- 얼굴이 작을수록 정체성 유지가 어려워지는 문제가 있어,
+  레퍼런스 기반 신원 유지(추가 얼굴 레퍼런스 입력) 전략이 필요합니다.
+
+---
+
+## 라이선스 / 저작권
+- 본 리포지토리의 이미지/자료는 **프로젝트 발표용**으로 사용된 자료입니다.
+- 외부 데이터/모델(예: DW-pose, Qwen 계열, Captioning 모델 등)의 라이선스는 각 프로젝트의 원 라이선스를 따릅니다.
