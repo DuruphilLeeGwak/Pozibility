@@ -113,15 +113,7 @@ POZIBILITY는 2-Stage 생성 구조를 기반으로 합니다.
 
 - 시연 영상: https://drive.google.com/file/d/1TprIpIyO2AX0E3BqYp3gUCXVjPXla5s4/view?usp=drive_link
 
-> GitHub에서 미리보기 썸네일이 필요하다면, `assets/00_cover.png` 또는 `assets/26_results_1.png`를 썸네일로 사용해
-> 링크 버튼 형태로 배치할 수 있습니다.
 
-예시:
-```md
-[![시연 영상 보기](assets/26_results_1.png)](https://drive.google.com/file/d/1TprIpIyO2AX0E3BqYp3gUCXVjPXla5s4/view?usp=drive_link)
-```
-
----
 
 ## Problems & Solutions
 
